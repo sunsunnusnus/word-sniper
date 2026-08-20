@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#fff7e8">
+<title>ワードスナイパー</title>
+<style>
+*{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#fff7e8;color:#333}
+.app{max-width:520px;margin:auto;min-height:100vh;padding:20px 16px 28px}
+h1{text-align:center;margin:8px 0 4px;font-size:32px}.sub{text-align:center;color:#777;margin-bottom:22px}
+.card{background:white;border-radius:24px;padding:22px;box-shadow:0 5px 18px #00000012;margin-bottom:16px}
+label{display:block;font-weight:700;margin:14px 0 7px}
+select,input{width:100%;font-size:18px;padding:13px;border:1px solid #ddd;border-radius:13px;background:white}
+button{border:0;border-radius:16px;padding:15px 18px;font-size:18px;font-weight:700;cursor:pointer;width:100%;margin-top:12px}
+.primary{background:#ff9f43;color:white}.secondary{background:#f1f1f1}.danger{background:#ffe2e2}
+.hidden{display:none}
+.topic{text-align:center;color:#777;font-size:18px}.topic b{display:block;color:#333;font-size:28px;margin-top:7px}
+.letter{text-align:center;font-size:88px;font-weight:900;line-height:1;margin:16px 0}
+.timer{text-align:center;font-size:25px;font-weight:800}
+.status{text-align:center;min-height:28px;color:#888}
+.scoregrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.scoregrid button{margin:0}
+.player{background:#fafafa;border-radius:14px;padding:12px}.player strong{font-size:20px}.player input{margin-top:7px}
+.small{text-align:center;color:#888;font-size:13px;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🎯 ワードスナイパー</h1>
+  <div class="sub">お題 × ひらがなで、言葉を早撃ち！</div>
+
+  <section id="setup" class="card">
+    <label>プレイヤー人数</label>
+    <select id="players"><option>2</option><option>3</option><option>4</option></select>
+    <label>制限時間</label>
+    <select id="seconds"><option value="15">15秒</option><option value="30" selected>30秒</option><option value="45">45秒</option><option value="60">60秒</option></select>
+    <label>ラウンド数</label>
+    <select id="rounds"><option>5</option><option value="10" selected>10</option><option>15</option><option>20</option></select>
+    <button class="primary" onclick="startGame()">ゲームスタート！</button>
+  </section>
+
+  <section id="game" class="hidden">
+    <div class="card">
+      <div class="topic">お題 <b id="topic"></b></div>
+      <div class="letter" id="letter"></div>
+      <div class="timer" id="timer"></div>
+      <div class="status" id="status"></div>
+      <button class="secondary" onclick="passRound()">パス</button>
+    </div>
+    <div class="card">
+      <div id="scoreArea"></div>
+      <button class="primary" onclick="nextRound()">次の問題へ</button>
+    </div>
+    <div class="small" id="roundInfo"></div>
+  </section>
+
+  <section id="result" class="card hidden">
+    <h2 style="text-align:center">🏆 結果発表</h2>
+    <div id="resultArea"></div>
+    <button class="primary" onclick="backHome()">もう一度遊ぶ</button>
+  </section>
+
+  <div class="small">自作・オリジナル版</div>
+</div>
+
+<script>
+const topics=[
+"食べ物","飲み物","動物","家にあるもの","コンビニにあるもの","スーパーにあるもの",
+"赤いもの","丸いもの","旅行に持っていくもの","夏といえば","冬といえば","有名な人",
+"アニメ・漫画","映画","都道府県","神戸にあるもの","プレゼント","100円ショップにあるもの",
+"子どもが好きなもの","大人が好きなもの","学校にあるもの","会社にあるもの","キッチンにあるもの",
+"お風呂にあるもの","電化製品","スポーツ","乗り物","お祭りにあるもの","海にあるもの","山にあるもの",
+"白いもの","黒いもの","四角いもの","甘いもの","辛いもの","冷たいもの","高いもの","小さいもの",
+"朝にすること","夜にすること","休日にすること","もらって嬉しいもの","買い物で買うもの",
+"カバンに入っているもの","ドラッグストアにあるもの","家具","照明・インテリア","旅行先で見るもの"
+];
+const letters=["あ","か","さ","た","な","は","ま","や","ら","わ"];
+let currentRound=0,totalRounds=10,timeLeft=30,timerId=null,used=[],scores=[];
+
+function startGame(){
+  const n=+document.getElementById("players").value;
+  totalRounds=+document.getElementById("rounds").value; timeLeft=+document.getElementById("seconds").value;
+  scores=Array(n).fill(0); currentRound=1; used=[]; 
+  document.getElementById("setup").classList.add("hidden");
+  document.getElementById("result").classList.add("hidden");
+  document.getElementById("game").classList.remove("hidden");
+  makeRound();
+}
+function makeRound(){
+  clearInterval(timerId);
+  let pair;
+  do{pair=[topics[Math.floor(Math.random()*topics.length)],letters[Math.floor(Math.random()*letters.length)]]}
+  while(used.some(x=>x[0]===pair[0]&&x[1]===pair[1]));
+  used.push(pair);
+  document.getElementById("topic").textContent=pair[0];
+  document.getElementById("letter").textContent="「"+pair[1]+"」";
+  document.getElementById("status").textContent="";
+  timeLeft=+document.getElementById("seconds").value;
+  updateTimer(); timerId=setInterval(()=>{timeLeft--;updateTimer();if(timeLeft<=0){clearInterval(timerId);document.getElementById("status").textContent="⏰ 時間切れ！";}},1000);
+  document.getElementById("roundInfo").textContent=`第 ${currentRound} / ${totalRounds} ラウンド`;
+  renderScores();
+}
+function updateTimer(){document.getElementById("timer").textContent="⏱ "+timeLeft+"秒";}
+function renderScores(){
+  const area=document.getElementById("scoreArea"); area.innerHTML="";
+  scores.forEach((s,i)=>{
+    const d=document.createElement("div");d.className="player";
+    d.innerHTML=`<strong>プレイヤー${i+1}</strong>　現在 ${s}点
+      <input type="number" min="0" max="3" value="0" id="p${i}" placeholder="今回の得点（0〜3）">`;
+    area.appendChild(d);
+  });
+}
+function nextRound(){
+  clearInterval(timerId);
+  scores=scores.map((s,i)=>s+(+document.getElementById("p"+i).value||0));
+  if(currentRound>=totalRounds){showResult();return;}
+  currentRound++;makeRound();
+}
+function passRound(){clearInterval(timerId);document.getElementById("status").textContent="⏭ パス！";}
+function showResult(){
+  document.getElementById("game").classList.add("hidden");document.getElementById("result").classList.remove("hidden");
+  const order=scores.map((s,i)=>({i:i+1,s})).sort((a,b)=>b.s-a.s);
+  document.getElementById("resultArea").innerHTML=order.map((x,j)=>`<div style="padding:12px;border-bottom:1px solid #eee;font-size:20px">${j+1}位　<strong>プレイヤー${x.i}</strong>　${x.s}点</div>`).join("");
+}
+function backHome(){clearInterval(timerId);document.getElementById("result").classList.add("hidden");document.getElementById("setup").classList.remove("hidden");}
+</script>
+</body>
+</html>
